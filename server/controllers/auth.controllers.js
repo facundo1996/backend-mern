@@ -1,7 +1,7 @@
 import { pool } from "../db.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { authRequired } from "../middlewares/validateToken.js"
+import { TOKEN_SECRET } from "../config.js"
 import { createAccessToken } from "../libs/jwt.js"
 
 export const register = async (req, res) => {
@@ -59,3 +59,19 @@ export const logout =  (req, res) => {
   )
   return res.sendStatus(200)
 }
+
+export const verifyToken = (req, res) => {
+  const { token } = req.cookies;
+
+  if (!token) {
+    return res.status(401).json({ message: "No token, authorization denied" });
+  }
+
+  jwt.verify(token, TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ message: "Invalid token" });
+    }
+
+    res.json({ id: decoded.id, username: decoded.username });
+  });
+};
