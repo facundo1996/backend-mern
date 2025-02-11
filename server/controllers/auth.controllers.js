@@ -1,7 +1,7 @@
 import { pool } from "../db.js";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import { TOKEN_SECRET } from "../config.js"
+import jwt, { decode } from "jsonwebtoken";
+import { TOKEN_SECRET, NODE_ENV } from "../config.js"
 import { createAccessToken } from "../libs/jwt.js"
 
 export const register = async (req, res) => {
@@ -32,17 +32,21 @@ export const login = async (req, res) => {
     
     const token = await createAccessToken({
       id: user[0].id,
-      username: user[0].username
+      username: user[0].username,
+      role: user[0].role
     })
 
     res.cookie('token', token, {
-      httpOnly: true,
-      sameSite: 'lax' // Protege contra CSRF
+      httpOnly: true, // Esto dice que la cookie solo se puede acceder desde el servidor
+      secure: NODE_ENV === 'production', // La cookie solo se puede acceder en https
+      sameSite: 'strict', // Protege contra CSRF
+      maxAge: 1000 * 60 * 60 // La cookie tiene validez de 1 hora
     });
 
     res.json({
       id: user[0].id,
-      username: user[0].username
+      username: user[0].username,
+      role: user[0].role
     })
 
   } catch (error) {
@@ -52,11 +56,7 @@ export const login = async (req, res) => {
 };
 
 export const logout =  (req, res) => {
-  res.cookie(
-    'token',
-    '',
-    { expires: new Date(0) }
-  )
+  res.clearCookie('token');
   return res.sendStatus(200)
 }
 
@@ -71,7 +71,6 @@ export const verifyToken = (req, res) => {
     if (err) {
       return res.status(403).json({ message: "Invalid token" });
     }
-
-    res.json({ id: decoded.id, username: decoded.username });
+    res.json({ id: decoded.id, username: decoded.username, role: decoded.role });
   });
 };
